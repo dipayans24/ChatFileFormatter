@@ -19,7 +19,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("💬 LazyBoy Chat File Formatter")
+st.title("💬 Zoom Chat File Formatter")
 st.markdown("Upload one or more webinar chat `.txt` files to generate a formatted Excel report.")
 
 # --- File Upload ---
