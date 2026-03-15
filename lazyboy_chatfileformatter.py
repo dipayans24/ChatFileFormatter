@@ -142,6 +142,6 @@ else:
     st.markdown("""
     **What this tool does:**
     - Parses Zoom/Webinar chat exports
-    - Identifies spam, recording mentions, and shared links
+    - Identifies spam.
     - Exports results into a structured Excel file with multiple sheets
     """)
