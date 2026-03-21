@@ -16,7 +16,7 @@ def get_Results():
         driver = webdriver.Chrome(options=options)
         driver.get("https://chatfileformatter.streamlit.app/")
 
-        wait = WebDriverWait(driver, 60)
+        wait = WebDriverWait(driver, 20)
 
         wait.until(EC.invisibility_of_element_located(
             (By.CSS_SELECTOR, "[data-testid='stStatusWidget']")
