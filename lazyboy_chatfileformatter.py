@@ -51,9 +51,15 @@ if uploaded_files:
             for comments in chats:
                 ValidComment = comments.decode("utf-8")
                 if ValidComment.find("panelists:") > -1 or ValidComment.find(" Everyone:") > -1 or ValidComment.find("(direct message)") > -1:
-                    data.loc[len(data), "TimeStamp"] = ValidComment
+                    try:
+                        data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
+                    except Exception as e:
+                        data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
                 else:
-                    data.loc[len(data)-1, "Comments"] = ValidComment
+                    try:
+                        data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
+                    except Exception as e:
+                        data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
 
             data["Time"] = data.TimeStamp.str.split(" ", n=1, expand=True)[0]
             data["Info"] = data.TimeStamp.str.split(" ", n=1, expand=True)[1]
