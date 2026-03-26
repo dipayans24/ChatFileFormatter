@@ -138,7 +138,7 @@ if uploaded_files:
 
         if len(ChatAnalysis) > 0:
             st.markdown("**Chat Analysis Preview**")
-            st.dataframe(ChatAnalysis.head(10), use_container_width=True)
+            st.dataframe(ChatAnalysis.head(10).reset_index(drop=True), use_container_width=True)
 
         st.markdown("---")
 
