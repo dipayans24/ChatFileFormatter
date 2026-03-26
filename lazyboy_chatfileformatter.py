@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Chat File Formatter - Streamlit App
-Converts Zoom/Webinar chat files into formatted Excel reports.
-"""
-
 import streamlit as st
 import pandas as pd
 import re
