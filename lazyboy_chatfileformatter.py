@@ -13,6 +13,36 @@ import os
 import tempfile, openpyxl
 from datetime import datetime
 
+def formatChat(chats):
+    data = pd.DataFrame(columns=["TimeStamp", "Comments"])
+    for comments in chats:
+        ValidComment = comments.decode("utf-8")
+        if ValidComment.find("panelists:") > -1 or ValidComment.find(" Everyone:") > -1 or ValidComment.find("(direct message)") > -1:
+            try:
+                data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
+            except Exception as e:
+                data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
+        else:
+            try:
+                data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
+            except Exception as e:
+                data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
+
+    data["Time"] = data.TimeStamp.str.split(" ", n=1, expand=True)[0]
+    data["Info"] = data.TimeStamp.str.split(" ", n=1, expand=True)[1]
+    data["From"] = data["Info"].str.split(" to ", n=1, expand=True)[0]
+    data["To"]   = data["Info"].str.split(" to ", n=1, expand=True)[1]
+    data["From"] = data["From"].str.replace("From", "").str.strip()
+    data["To"]   = data["To"].str.replace(":", "").str.strip()
+    data["Comments"] = data["Comments"].str.strip()
+    data["To"] = data["To"].apply(
+        lambda x: x.replace(", Hosts and panelists", "").replace(", host and panelists", "")
+        if x.find(",") > -1 else x
+    )
+    data = data.loc[:, ["Time", "From", "To", "Comments"]]
+
+    return data 
+    
 st.set_page_config(
     page_title="LazyBoy Chat Formatter",
     page_icon="💬",
@@ -47,32 +77,7 @@ if uploaded_files:
                         chats.extend(f.readlines())
 
             # --- Original Logic (unchanged) ---
-            data = pd.DataFrame(columns=["TimeStamp", "Comments"])
-            for comments in chats:
-                ValidComment = comments.decode("utf-8")
-                if ValidComment.find("panelists:") > -1 or ValidComment.find(" Everyone:") > -1 or ValidComment.find("(direct message)") > -1:
-                    try:
-                        data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
-                    except Exception as e:
-                        data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
-                else:
-                    try:
-                        data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
-                    except Exception as e:
-                        data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
-
-            data["Time"] = data.TimeStamp.str.split(" ", n=1, expand=True)[0]
-            data["Info"] = data.TimeStamp.str.split(" ", n=1, expand=True)[1]
-            data["From"] = data["Info"].str.split(" to ", n=1, expand=True)[0]
-            data["To"]   = data["Info"].str.split(" to ", n=1, expand=True)[1]
-            data["From"] = data["From"].str.replace("From", "").str.strip()
-            data["To"]   = data["To"].str.replace(":", "").str.strip()
-            data["Comments"] = data["Comments"].str.strip()
-            data["To"] = data["To"].apply(
-                lambda x: x.replace(", Hosts and panelists", "").replace(", host and panelists", "")
-                if x.find(",") > -1 else x
-            )
-            data = data.loc[:, ["Time", "From", "To", "Comments"]]
+            data = formatChat(chats)
 
             ChatAnalysis = data.groupby(by="From", as_index=False).agg(
                 UniqueCount=("Comments", "nunique"),
@@ -87,16 +92,17 @@ if uploaded_files:
             )
             ChatAnalysis.sort_values(by="SpamPercentage", ascending=False, inplace=True)
 
-            RecordingMention = data[
-                data["Comments"].str.contains("record") &
-                ~data["From"].str.lower().str.contains("team be10x")
-            ]
+            if supportTeamName == "":
+                    RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains("team be10x")))
+                    chatDfCondition =  ((data["From"].str.lower().str.contains("team be10x")) | (data["From"].str.lower().str.contains("anushka")))
+            else:
+                RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains(supportTeamName.lower())))
+                chatDfCondition =  (data["From"].str.lower().str.contains(supportTeamName.lower()))   
 
-            chatDf = data[
-                (data["From"].str.lower().str.contains("team be10x") |
-                 data["From"].str.lower().str.contains("anushka")) &
-                data["Comments"].str.contains("://")
-            ]
+            RecordingMention = data[RecordingCondition]
+
+            chatDf = data[chatDfCondition & data["Comments"].str.contains("://")]
+            
             chatDf = chatDf.drop_duplicates(subset="Comments")
             chatDf.reset_index(drop=True, inplace=True)
             chatDf = chatDf[["Time", "Comments"]]
