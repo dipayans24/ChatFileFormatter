@@ -66,91 +66,94 @@ if uploaded_files:
                                     placeholder="Optional, enter the support team name to get the links shared, if any.")
     
     if st.button("🚀 Process Files", type="primary"):
-        with st.spinner("Processing chat files..."):
+        try:
+            with st.spinner("Processing chat files..."):
+    
+                # Save uploaded files to a temp directory and read lines
+                chats = []
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    for uploaded_file in uploaded_files:
+                        file_path = os.path.join(tmpdir, uploaded_file.name)
+                        with open(file_path, "wb") as f:
+                            f.write(uploaded_file.read())
+                        with open(file_path, "rb+") as f:
+                            chats.extend(f.readlines())
+    
+                # --- Original Logic (unchanged) ---
+                data = formatChat(chats)
+    
+                ChatAnalysis = data.groupby(by="From", as_index=False).agg(
+                    UniqueCount=("Comments", "nunique"),
+                    TotalCount=("Comments", "count")
+                )
+                ChatAnalysis["SpamPercentage"] = ChatAnalysis.apply(
+                    lambda x: round(100 - ((x["UniqueCount"] * 100) / x["TotalCount"]), 2), axis=1
+                )
+                ChatAnalysis = ChatAnalysis[ChatAnalysis["UniqueCount"] > 1]
+                ChatAnalysis["Replies"] = ChatAnalysis["From"].apply(
+                    lambda x: data[data["To"] == x]["To"].count()
+                )
+                ChatAnalysis.sort_values(by="SpamPercentage", ascending=False, inplace=True)
+    
+                if supportTeamName == "":
+                        RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains("team be10x")))
+                        chatDfCondition =  ((data["From"].str.lower().str.contains("team be10x")) | (data["From"].str.lower().str.contains("anushka")))
+                else:
+                    RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains(supportTeamName.lower())))
+                    chatDfCondition =  (data["From"].str.lower().str.contains(supportTeamName.lower()))   
+    
+                RecordingMention = data[RecordingCondition]
+    
+                chatDf = data[chatDfCondition & data["Comments"].str.contains("://")]
+                
+                chatDf = chatDf.drop_duplicates(subset="Comments")
+                chatDf.reset_index(drop=True, inplace=True)
+                chatDf = chatDf[["Time", "Comments"]]
+    
+                # --- Generate Excel in memory ---
+                ist_timezone = pytz.timezone('Asia/Kolkata')
+                current_time_utc = datetime.now(pytz.utc)
+                current_time_ist = current_time_utc.astimezone(ist_timezone)
+                output_filename = f"meeting_saved_chat_{current_time_ist.strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+    
+                output_buffer = io.BytesIO()
+                with pd.ExcelWriter(output_buffer, engine="openpyxl") as writer:
+                    if len(ChatAnalysis) > 0:
+                        ChatAnalysis.to_excel(writer, sheet_name="ChatAnalysis", index=False)
+                    if len(RecordingMention) > 0:
+                        RecordingMention.to_excel(writer, sheet_name="RecordingMention", index=False)
+                    if len(chatDf) > 0:
+                        chatDf.to_excel(writer, sheet_name="Links", index=False)
+                    if len(data) > 0:
+                        data.to_excel(writer, sheet_name="RawChat", index=False)
+                output_buffer.seek(0)
 
-            # Save uploaded files to a temp directory and read lines
-            chats = []
-            with tempfile.TemporaryDirectory() as tmpdir:
-                for uploaded_file in uploaded_files:
-                    file_path = os.path.join(tmpdir, uploaded_file.name)
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_file.read())
-                    with open(file_path, "rb+") as f:
-                        chats.extend(f.readlines())
+                # --- Preview summaries ---
+                st.markdown("---")
+                st.subheader("📊 Processing Summary")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Total Messages", len(data))
+                col2.metric("Unique Participants", data["From"].nunique())
+                col3.metric("Recording Mentions", len(RecordingMention))
+                col4.metric("Links Shared", len(chatDf))
 
-            # --- Original Logic (unchanged) ---
-            data = formatChat(chats)
-
-            ChatAnalysis = data.groupby(by="From", as_index=False).agg(
-                UniqueCount=("Comments", "nunique"),
-                TotalCount=("Comments", "count")
+            if len(ChatAnalysis) > 0:
+                st.markdown("**Chat Analysis Preview**")
+                st.dataframe(ChatAnalysis.head(10).reset_index(drop=True), use_container_width=True)
+    
+            st.markdown("---")
+    
+            # --- Download Button ---
+            st.download_button(
+                label="📥 Download Excel Report",
+                data=output_buffer,
+                file_name=output_filename,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary"
             )
-            ChatAnalysis["SpamPercentage"] = ChatAnalysis.apply(
-                lambda x: round(100 - ((x["UniqueCount"] * 100) / x["TotalCount"]), 2), axis=1
-            )
-            ChatAnalysis = ChatAnalysis[ChatAnalysis["UniqueCount"] > 1]
-            ChatAnalysis["Replies"] = ChatAnalysis["From"].apply(
-                lambda x: data[data["To"] == x]["To"].count()
-            )
-            ChatAnalysis.sort_values(by="SpamPercentage", ascending=False, inplace=True)
-
-            if supportTeamName == "":
-                    RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains("team be10x")))
-                    chatDfCondition =  ((data["From"].str.lower().str.contains("team be10x")) | (data["From"].str.lower().str.contains("anushka")))
-            else:
-                RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains(supportTeamName.lower())))
-                chatDfCondition =  (data["From"].str.lower().str.contains(supportTeamName.lower()))   
-
-            RecordingMention = data[RecordingCondition]
-
-            chatDf = data[chatDfCondition & data["Comments"].str.contains("://")]
             
-            chatDf = chatDf.drop_duplicates(subset="Comments")
-            chatDf.reset_index(drop=True, inplace=True)
-            chatDf = chatDf[["Time", "Comments"]]
-
-            # --- Generate Excel in memory ---
-            ist_timezone = pytz.timezone('Asia/Kolkata')
-            current_time_utc = datetime.now(pytz.utc)
-            current_time_ist = current_time_utc.astimezone(ist_timezone)
-            output_filename = f"meeting_saved_chat_{current_time_ist.strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
-
-            output_buffer = io.BytesIO()
-            with pd.ExcelWriter(output_buffer, engine="openpyxl") as writer:
-                if len(ChatAnalysis) > 0:
-                    ChatAnalysis.to_excel(writer, sheet_name="ChatAnalysis", index=False)
-                if len(RecordingMention) > 0:
-                    RecordingMention.to_excel(writer, sheet_name="RecordingMention", index=False)
-                if len(chatDf) > 0:
-                    chatDf.to_excel(writer, sheet_name="Links", index=False)
-                if len(data) > 0:
-                    data.to_excel(writer, sheet_name="RawChat", index=False)
-            output_buffer.seek(0)
-
-        # --- Preview summaries ---
-        st.markdown("---")
-        st.subheader("📊 Processing Summary")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Messages", len(data))
-        col2.metric("Unique Participants", data["From"].nunique())
-        col3.metric("Recording Mentions", len(RecordingMention))
-        col4.metric("Links Shared", len(chatDf))
-
-        if len(ChatAnalysis) > 0:
-            st.markdown("**Chat Analysis Preview**")
-            st.dataframe(ChatAnalysis.head(10).reset_index(drop=True), use_container_width=True)
-
-        st.markdown("---")
-
-        # --- Download Button ---
-        st.download_button(
-            label="📥 Download Excel Report",
-            data=output_buffer,
-            file_name=output_filename,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary"
-        )
-
+       except:
+            print("Please upload only the Zoom meeting chat file (usually named “meeting_saved_chat.txt”).")
 else:
     st.info("👆 Please upload one or more chat `.txt` files to get started.")
     st.markdown("""
