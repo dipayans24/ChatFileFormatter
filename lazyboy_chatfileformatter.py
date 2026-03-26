@@ -153,7 +153,7 @@ if uploaded_files:
             )
             
         except:
-            print("Please upload only the Zoom meeting chat file (usually named “meeting_saved_chat.txt”).")
+            st.error("Please upload only the Zoom meeting chat file (usually named “meeting_saved_chat.txt”).")
 else:
     st.info("👆 Please upload one or more chat `.txt` files to get started.")
     st.markdown("""
