@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-LazyBoy Chat File Formatter - Streamlit App
+Chat File Formatter - Streamlit App
 Converts Zoom/Webinar chat files into formatted Excel reports.
 """
 
