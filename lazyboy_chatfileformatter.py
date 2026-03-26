@@ -62,7 +62,9 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     st.success(f"✅ {len(uploaded_files)} file(s) uploaded: {', '.join([f.name for f in uploaded_files])}")
-
+    supportTeamName = st.text_input("Enter the support team name:", max_chars=25, \
+                                    placeholder="Optional, enter the support team name to get the links shared, if any.")
+    
     if st.button("🚀 Process Files", type="primary"):
         with st.spinner("Processing chat files..."):
 
