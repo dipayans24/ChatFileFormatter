@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 import re
@@ -39,7 +38,7 @@ def formatChat(chats):
     return data 
     
 st.set_page_config(
-    page_title="LazyBoy Chat Formatter",
+    page_title="Zoom Chat Formatter",
     page_icon="💬",
     layout="centered"
 )
