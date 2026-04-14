@@ -89,9 +89,11 @@ if uploaded_files:
                 )
                 ChatAnalysis.sort_values(by="SpamPercentage", ascending=False, inplace=True)
     
+                supportTeamName = "team be10x" if supportTeamName == "" else supportTeamName
+
                 if supportTeamName == "":
-                        RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains("team be10x")))
-                        chatDfCondition =  ((data["From"].str.lower().str.contains("team be10x")) | (data["From"].str.lower().str.contains("anushka")))
+                    RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains(supportTeamName)))
+                    chatDfCondition =  ((data["From"].str.lower().str.contains(supportTeamName)) | (data["From"].str.lower().str.contains("anushka")))
                 else:
                     RecordingCondition  = ((data["Comments"].str.contains("record")) & (~data["From"].str.lower().str.contains(supportTeamName.lower())))
                     chatDfCondition =  (data["From"].str.lower().str.contains(supportTeamName.lower()))   
@@ -128,7 +130,7 @@ if uploaded_files:
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Total Messages", len(data))
                 col2.metric("Unique Participants", data["From"].nunique())
-                col3.metric("Recording Mentions", len(RecordingMention))
+                col2.metric("Support Responses Count", len(data[data["From"].str.lower().str.contains(supportTeamName.lower())]))
                 col4.metric("Links Shared", len(chatDf))
 
             if len(ChatAnalysis) > 0:
