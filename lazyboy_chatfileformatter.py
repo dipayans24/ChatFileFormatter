@@ -129,8 +129,8 @@ if uploaded_files:
                 st.subheader("📊 Processing Summary")
                 col1, col2, col3, col4 = st.columns(4, width="stretch")
                 col1.metric("Total Messages", len(data), width="stretch")
-                col2.metric("Unique Participants", data["From"].nunique(), width="stretch")
                 col2.metric("Support Responses", len(data[data["From"].str.lower().str.contains(supportTeamName.lower())]), width="stretch")
+                col3.metric("Unique Participants", data["From"].nunique(), width="stretch")
                 col4.metric("Links Shared", len(chatDf), width="stretch")
 
             if len(ChatAnalysis) > 0:
