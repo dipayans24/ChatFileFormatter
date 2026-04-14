@@ -127,7 +127,7 @@ if uploaded_files:
                 # --- Preview summaries ---
                 st.markdown("---")
                 st.subheader("📊 Processing Summary")
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4 = st.columns(4, width="stretch")
                 col1.metric("Total Messages", len(data))
                 col2.metric("Unique Participants", data["From"].nunique())
                 col2.metric("Support Responses Count", len(data[data["From"].str.lower().str.contains(supportTeamName.lower())]))
