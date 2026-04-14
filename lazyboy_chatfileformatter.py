@@ -128,10 +128,10 @@ if uploaded_files:
                 st.markdown("---")
                 st.subheader("📊 Processing Summary")
                 col1, col2, col3, col4 = st.columns(4, width="stretch")
-                col1.metric("Total Messages", len(data))
-                col2.metric("Unique Participants", data["From"].nunique())
-                col2.metric("Support Responses Count", len(data[data["From"].str.lower().str.contains(supportTeamName.lower())]))
-                col4.metric("Links Shared", len(chatDf))
+                col1.metric("Total Messages", len(data), width="stretch")
+                col2.metric("Unique Participants", data["From"].nunique(), width="stretch")
+                col2.metric("Support Responses", len(data[data["From"].str.lower().str.contains(supportTeamName.lower())]), width="stretch")
+                col4.metric("Links Shared", len(chatDf), width="stretch")
 
             if len(ChatAnalysis) > 0:
                 st.markdown("**Chat Analysis Preview**")
