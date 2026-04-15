@@ -7,35 +7,86 @@ import os
 import tempfile, openpyxl
 from datetime import datetime
 
+_INVALID_CHARS = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+
+def extractValidText(text):
+    # Simplified: always convert to str, removing the try/except overhead
+    return _INVALID_CHARS.sub('', str(text))
+
 def formatChat(chats):
-    data = pd.DataFrame(columns=["TimeStamp", "Comments"])
-    for comments in chats:
-        ValidComment = comments.decode("utf-8")
-        if ValidComment.find("panelists:") > -1 or ValidComment.find(" Everyone:") > -1 or ValidComment.find("(direct message)") > -1:
-            try:
-                data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
-            except Exception as e:
-                data.loc[len(data), "TimeStamp"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
+    timestamps, comments = [], []
+    current_comment = None
+
+    for raw in chats:
+        line = _INVALID_CHARS.sub('', raw.decode("utf-8"))
+
+        if any(kw in line for kw in ("panelists:", " Everyone:", "(direct message)")):
+            if current_comment is not None: #To extract Timestamp
+                timestamps.append(current_comment) #Adds the timestamp
+                comments.append(None) #Skips the comment
+            current_comment = line
         else:
-            try:
-                data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', ValidComment)
-            except Exception as e:
-                data.loc[len(data)-1, "Comments"] = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', e)
+            if current_comment is not None: #To extract comment
+                timestamps.append(current_comment) #Adds the timestamp
+                comments.append(line.strip()) #Adds the comment
+                current_comment = None #Flushes the current comment to None
+ 
+    # Flush last entry if it had no comment
+    if current_comment is not None:
+        timestamps.append(current_comment)
+        comments.append(None)
 
-    data["Time"] = data.TimeStamp.str.split(" ", n=1, expand=True)[0]
-    data["Info"] = data.TimeStamp.str.split(" ", n=1, expand=True)[1]
-    data["From"] = data["Info"].str.split(" to ", n=1, expand=True)[0]
-    data["To"]   = data["Info"].str.split(" to ", n=1, expand=True)[1]
-    data["From"] = data["From"].str.replace("From", "").str.strip()
-    data["To"]   = data["To"].str.replace(":", "").str.strip()
-    data["Comments"] = data["Comments"].str.strip()
-    data["To"] = data["To"].apply(
-        lambda x: x.replace(", Hosts and panelists", "").replace(", host and panelists", "")
-        if x.find(",") > -1 else x
+    data = pd.DataFrame({"TimeStamp": timestamps, "Comments": comments})
+
+    # Single split stored to avoid calling str.split twice
+    ts_split = data["TimeStamp"].str.split(" ", n=1, expand=True)
+    info_split = ts_split[1].str.split(" to ", n=1, expand=True)
+
+    data["Time"] = ts_split[0]
+    data["From"] = info_split[0].str.replace("From", "", regex=False).str.strip()
+    data["To"]   = (
+        info_split[1]
+        .str.replace(":", "", regex=False)
+        .str.strip()
+        .str.replace(", [Hh]osts and panelists", "", regex=True)
     )
-    data = data.loc[:, ["Time", "From", "To", "Comments"]]
+    data["Comments"] = data["Comments"].str.strip()
 
-    return data 
+    return data[["Time", "From", "To", "Comments"]]
+
+# # def extractValidText(text):
+# #     try:
+# #         return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+# #     except Exception as e: 
+# #         return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', str(e))
+
+# # def formatChat(chats):
+# #     data = pd.DataFrame(columns=["TimeStamp", "Comments"])
+
+# #     test = [comments.decode("utf-8")  for comments in chats]
+
+# #     for ValidComment in test:
+# #         #ValidComment = comments.decode("utf-8")
+# #         if ValidComment.find("panelists:") > -1 or ValidComment.find(" Everyone:") > -1 or ValidComment.find("(direct message)") > -1:
+# #                 data.at[len(data), "TimeStamp"] = extractValidText(ValidComment)
+# #         else:
+# #                 data.at[len(data)-1, "Comments"] = extractValidText(ValidComment)
+                
+
+# #     data["Time"] = data.TimeStamp.str.split(" ", n=1, expand=True)[0]
+# #     data["Info"] = data.TimeStamp.str.split(" ", n=1, expand=True)[1]
+# #     data["From"] = data["Info"].str.split(" to ", n=1, expand=True)[0]
+# #     data["To"]   = data["Info"].str.split(" to ", n=1, expand=True)[1]
+# #     data["From"] = data["From"].str.replace("From", "").str.strip()
+# #     data["To"]   = data["To"].str.replace(":", "").str.strip()
+# #     data["Comments"] = data["Comments"].str.strip()
+# #     data["To"] = data["To"].apply(
+# #         lambda x: x.replace(", Hosts and panelists", "").replace(", host and panelists", "")
+# #         if x.find(",") > -1 else x
+# #     )
+# #     data = data.loc[:, ["Time", "From", "To", "Comments"]]
+
+# #     return data  
     
 st.set_page_config(
     page_title="Zoom Chat Formatter",
